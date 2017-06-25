@@ -4,8 +4,10 @@ S3kv
 A script that helps writing keys and values to S3 without the need for temp files
 Place it in your bin directory and don't forget to run chmod +x on it :)
 Author: Innovalayer, LLC
-Python Version: 2.7
+Python Version: 2.7, 3+
 """
+from __future__ import print_function
+
 import argparse
 from argparse import RawTextHelpFormatter
 from botocore.exceptions import ClientError
@@ -32,8 +34,8 @@ class S3kv(object):
                 Key=key,
                 Bucket=self.bucket)
         except ClientError as error:
-            print "Error Fetching Key '%s': %s" % (key,
-                error.response["Error"]["Message"])
+            print("Error Fetching Key '%s': %s" % (key,
+                error.response["Error"]["Message"]))
             return False
         return response["Body"].read()
 
@@ -42,11 +44,11 @@ class S3kv(object):
         try:
             self.client.put_object(
                 Key=key,
-                Body=bytes(value),
+                Body=value,
                 Bucket=self.bucket)
         except ClientError as error:
-            print "Error Setting Key '%s': %s" % (key,
-                error.response["Error"]["Message"])
+            print("Error Setting Key '%s': %s" % (key,
+                error.response["Error"]["Message"]))
             return False
         return True
 
@@ -60,8 +62,8 @@ class S3kv(object):
                 Key=key,
                 Bucket=self.bucket)
         except ClientError as error:
-            print "Error Deleting Key '%s': %s" % (key,
-                error.response["Error"]["Message"])
+            print("Error Deleting Key '%s': %s" % (key,
+                error.response["Error"]["Message"]))
             return False
         return True
 
@@ -86,7 +88,7 @@ Examples:
                         help="Valid actions are: set, get, del")
     parser.add_argument("key", type=check_key, default=None,
                         help="The key being set")
-    parser.add_argument("value", nargs="?", type=bytes, default=None,
+    parser.add_argument("value", nargs="?", type=str, default=None,
                         help="The value for the key")
 
     args = parser.parse_args()
@@ -95,13 +97,13 @@ Examples:
 
     conn = S3kv(bucket=args.bucket, profile=args.profile)
     if args.action == "set":
-        print conn.set_key(args.key, args.value)
+        print(conn.set_key(args.key, args.value))
     elif args.action == "get":
         response = conn.get_key(args.key)
         if response:
-            print response
+            print(response)
     elif args.action == "del":
-        print conn.del_key(args.key)
+        print(conn.del_key(args.key))
 
     return True
 
