@@ -1,0 +1,110 @@
+#!/usr/bin/env python
+"""
+S3kv
+A script that helps writing keys and values to S3 without the need for temp files
+Place it in your bin directory and don't forget to run chmod +x on it :)
+Author: Innovalayer, LLC
+Python Version: 2.7
+"""
+import argparse
+from argparse import RawTextHelpFormatter
+from botocore.exceptions import ClientError
+import boto3
+
+
+def check_key(key):
+    """Checks and sanitizes the key argument"""
+    if key[-1] == "/":
+        raise argparse.ArgumentTypeError("%s end with '/' and is not valid key name" % key)
+    return str(key.lstrip("/"))
+
+
+class S3kv(object):
+    def __init__(self, bucket, profile=None):
+        session = boto3.session.Session(profile_name=profile)
+        self.client = session.client("s3")
+        self.bucket = bucket
+
+    def get_key(self, key):
+        """Returns the contents of the key in the S3 bucket"""
+        try:
+            response = self.client.get_object(
+                Key=key,
+                Bucket=self.bucket)
+        except ClientError as error:
+            print "Error Fetching Key '%s': %s" % (key,
+                error.response["Error"]["Message"])
+            return False
+        return response["Body"].read()
+
+    def set_key(self, key, value):
+        """Creates or Updates the key in S3 with value"""
+        try:
+            self.client.put_object(
+                Key=key,
+                Body=bytes(value),
+                Bucket=self.bucket)
+        except ClientError as error:
+            print "Error Setting Key '%s': %s" % (key,
+                error.response["Error"]["Message"])
+            return False
+        return True
+
+    def del_key(self, key):
+        """Deletes the key in S3 if it exists, reporting if it doesn't"""
+        try:
+            self.client.head_object(
+                Key=key,
+                Bucket=self.bucket)
+            self.client.delete_object(
+                Key=key,
+                Bucket=self.bucket)
+        except ClientError as error:
+            print "Error Deleting Key '%s': %s" % (key,
+                error.response["Error"]["Message"])
+            return False
+        return True
+
+
+def main():
+    parser = argparse.ArgumentParser(formatter_class=RawTextHelpFormatter, description="""
+Allow setting keys in S3 without creating temporary files
+Examples:
+\ts3kv --bucket test get mykey
+\ts3kv --bucket test set mykey myvalue
+\ts3kv --bucket test del mykey
+ """)
+
+    parser.add_argument("-b", "--bucket", type=str, required=True,
+                        help="The key-value s3 bucket")
+
+    parser.add_argument("-p", "--profile", type=str, required=False,
+                        help="The AWS profile to use. Default profile used is 'default'")
+
+    parser.add_argument("action", type=str, default=None,
+                        choices=["set", "get", "del"],
+                        help="Valid actions are: set, get, del")
+    parser.add_argument("key", type=check_key, default=None,
+                        help="The key being set")
+    parser.add_argument("value", nargs="?", type=bytes, default=None,
+                        help="The value for the key")
+
+    args = parser.parse_args()
+    if args.action == "set" and args.value is None:
+        parser.error("Setting keys requires a value")
+
+    conn = S3kv(bucket=args.bucket, profile=args.profile)
+    if args.action == "set":
+        print conn.set_key(args.key, args.value)
+    elif args.action == "get":
+        response = conn.get_key(args.key)
+        if response:
+            print response
+    elif args.action == "del":
+        print conn.del_key(args.key)
+
+    return True
+
+
+if __name__ == "__main__":
+    main()
