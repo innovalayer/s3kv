@@ -6,9 +6,11 @@ Place it in your bin directory and don't forget to run chmod +x on it :)
 Author: Innovalayer, LLC
 Python Version: 2.7, 3+
 """
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
+from future.utils import bytes_to_native_str
 
 import argparse
+import sys
 from argparse import RawTextHelpFormatter
 from botocore.exceptions import ClientError
 import boto3
@@ -96,16 +98,18 @@ Examples:
         parser.error("Setting keys requires a value")
 
     conn = S3kv(bucket=args.bucket, profile=args.profile)
+    response = False
     if args.action == "set":
-        print(conn.set_key(args.key, args.value))
+        response = conn.set_key(args.key, args.value)
     elif args.action == "get":
         response = conn.get_key(args.key)
         if response:
-            print(response)
+            response = bytes_to_native_str(response)
     elif args.action == "del":
-        print(conn.del_key(args.key))
+        response = conn.del_key(args.key)
 
-    return True
+    print(response)
+    sys.exit(not response)
 
 
 if __name__ == "__main__":

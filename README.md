@@ -14,3 +14,5 @@ s3kv --bucket test del mykey
 
 > Copy the script into your bin directory and make it executable (chmod +x).
 You can run "s3kv --help" to output usage information
+
+Please note, this script requires on the boto3 package and the future package
